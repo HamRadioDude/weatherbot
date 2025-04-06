@@ -1,6 +1,6 @@
 # WeatherBot for Meshtastic
 
-WeatherBot is a Python script that runs on a Raspberry Pi and sends real-time weather updates to your Meshtastic network using the OpenWeather API. It supports periodic forecasts, alert monitoring, and custom channel delivery.  It was originally written by me, and pieced together, then my Dog looked at it and said it looked "RUFF". We then hired AI to do better.  It did better.   Subscribe to Ham Radio Dude.
+WeatherBot is a Python script that runs on a Raspberry Pi and sends real-time weather updates to your Meshtastic network using the OpenWeather API. It supports periodic forecasts, alert monitoring, and custom channel delivery.  It was originally written by me, and pieced together, then my Dog looked at it and said it looked "RUFF". We then hired AI to do better.  It did better.  There are tools out there, which could really extend out the possibilities of meshtastic. Even if we go offline, there are tools that would be useful. These small scripts are stepping stones to something much larger. My goal is to get you thinking.   How can you make your local mesh better, how can you prepare to not fail, how can you educate while building.  Subscribe to Ham Radio Dude, I've been a Meshpert for 8 weeks now.
 
 ## Features
 
@@ -18,12 +18,13 @@ WeatherBot is a Python script that runs on a Raspberry Pi and sends real-time we
 - Python 3.7+
 - OpenWeather API Key (free at openweathermap.org)
 - Meshtastic TCP Interface running locally
+- Add the correct zip code in the location portion of the settings.json file
 
 ## Setup
 
 1. Clone this repository:
     ```bash
-    git clone https://github.com/yourusername/weatherbot.git
+    git clone https://github.com/HamRadioDude/weatherbot.git
     cd weatherbot
     ```
 
@@ -35,7 +36,7 @@ WeatherBot is a Python script that runs on a Raspberry Pi and sends real-time we
 3. Create a `data/settings.json` file:
     ```json
     {
-      "location": "00000,US",
+      "location": "00000,US", 
       "api_key": "YOUR_API_KEY_HERE",
       "channel_index": 0
     }

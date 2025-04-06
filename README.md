@@ -1,0 +1,2 @@
+# weatherbot
+weatherbot for meshtastic 

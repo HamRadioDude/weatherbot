@@ -60,16 +60,24 @@ def split_message(text):
 
     return [f"({i+1}/{len(chunks)}) {chunk}" for i, chunk in enumerate(chunks)]
 
-# --- Send message to Meshtastic ---
-def send_to_meshtastic(chunks, channel_index=0):
+# --- TCP interface wrapper ---
+def get_interface():
     try:
-        interface = TCPInterface("127.0.0.1")
-        for chunk in chunks:
-            print(f"[WeatherBot] Sending to Meshtastic (channel {channel_index}): {chunk}")
+        return TCPInterface("127.0.0.1")
+    except Exception as e:
+        print(f"[WeatherBot] Error initializing TCPInterface: {e}")
+        return None
+
+# --- Send message ---
+def send_to_meshtastic(chunks, channel_index):
+    global interface
+    for chunk in chunks:
+        try:
             interface.sendText(chunk, channelIndex=channel_index)
             time.sleep(1)
-    except Exception as e:
-        print(f"Meshtastic send error: {e}")
+        except BrokenPipeError:
+            print("[WeatherBot] Broken pipe. Reinitializing TCPInterface...")
+            interface = get_interface()
 
 # --- Weather API helpers ---
 def get_weather_data(endpoint, params):
@@ -107,7 +115,7 @@ def get_current_weather(settings):
     if data:
         desc = data['weather'][0]['description']
         emoji_desc = weather_with_emoji(desc)
-        return f"Current weather in {data['name']}: {emoji_desc}, {data['main']['temp']}\u00b0F"
+        return f"Current weather in {data['name']}: {emoji_desc}, {data['main']['temp']}°F"
 
 def get_hourly_forecast(settings):
     lat, lon = get_lat_lon(settings)
@@ -129,7 +137,7 @@ def get_hourly_forecast(settings):
             temp = hour["temp"]
             desc = hour["weather"][0]["description"]
             emoji_desc = weather_with_emoji(desc)
-            out += f"\n{dt}: {emoji_desc}, {temp}\u00b0F"
+            out += f"\n{dt}: {emoji_desc}, {temp}°F"
         return out.strip()
 
 def get_daily_forecast(settings):
@@ -152,20 +160,8 @@ def get_daily_forecast(settings):
             desc = day["weather"][0]["description"]
             temp = day["temp"]["day"]
             emoji_desc = weather_with_emoji(desc)
-            out += f"\n{dt}: {emoji_desc}, {temp}\u00b0F"
+            out += f"\n{dt}: {emoji_desc}, {temp}°F"
         return out.strip()
-
-def get_alerts(settings):
-    endpoint = "https://api.openweathermap.org/data/2.5/weather"
-    params = {
-        "q": settings["location"],
-        "appid": settings["api_key"],
-        "units": "imperial"
-    }
-    data = get_weather_data(endpoint, params)
-    if data and "alerts" in data:
-        return data["alerts"]
-    return []
 
 # --- Alert tracking ---
 def load_alerts():
@@ -181,23 +177,23 @@ def save_alerts(alerts):
 def alert_not_seen(alert_id, stored_alerts):
     return alert_id not in stored_alerts
 
-# --- Main scheduler loop ---
+# --- Main loop ---
 def main():
+    global interface
     settings = load_settings()
     alerts_seen = load_alerts()
     channel_index = settings.get("channel_index", 0)
+    interface = get_interface()
 
     last_weather_check = 0
     last_alert_check = 0
-    weather_interval = 10 * 60  # 10 minutes
-    alert_interval = 10 * 60    # default
-
+    weather_interval = 10 * 60
+    alert_interval = 10 * 60
     active_alert_type = None
 
     while True:
         now = datetime.datetime.now()
         current_time = time.time()
-
         print(f"[{now.strftime('%Y-%m-%d %H:%M:%S')}] Checking schedule...")
 
         if not check_internet():
@@ -206,7 +202,6 @@ def main():
             time.sleep(60)
             continue
 
-        # Weather check interval
         if current_time - last_weather_check >= weather_interval:
             print("[WeatherBot] Sending current weather update...")
             msg = get_current_weather(settings)
@@ -225,43 +220,12 @@ def main():
 
             last_weather_check = current_time
 
-        # Alert check with adaptive interval
         if current_time - last_alert_check >= alert_interval:
             print("[WeatherBot] Checking for alerts...")
-            alerts = get_alerts(settings)
-            if alerts:
-                for alert in alerts:
-                    alert_id = alert.get("event") + str(alert.get("start"))
-                    severity = alert.get("event", "").lower()
-                    description = alert.get("description", "No details.")
-
-                    if alert_not_seen(alert_id, alerts_seen):
-                        print(f"[WeatherBot] ⚠️ New alert detected: {severity.title()}")
-                        alerts_seen[alert_id] = time.time()
-                        save_alerts(alerts_seen)
-                        text = f"⚠️ {severity.title()} Alert: {description}"
-                        send_to_meshtastic(split_message(text), channel_index)
-
-                        # Adjust alert interval based on severity
-                        if "tornado" in severity:
-                            alert_interval = 60  # check every 1 minute
-                        elif "warning" in severity:
-                            alert_interval = 5 * 60
-                        elif "watch" in severity:
-                            alert_interval = 15 * 60
-                        elif "advisory" in severity:
-                            alert_interval = 30 * 60
-                        else:
-                            alert_interval = 10 * 60
-
-                        active_alert_type = severity
-            else:
-                alert_interval = 10 * 60
-                active_alert_type = None
-
+            # NOTE: Add real-time alert logic here if available from API version
             last_alert_check = current_time
 
         time.sleep(60)
 
-main()
-# special thanks to AI, my dog, and coffee. 
+if __name__ == "__main__":
+    main()

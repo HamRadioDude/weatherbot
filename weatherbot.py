@@ -129,15 +129,26 @@ def summarize_current(data):
 
 def summarize_hourly(data):
     lines = ["Next 5 hours:"]
-    for i in range(5):
+    now = datetime.datetime.now()
+
+    # Find the index of the first hour in the future
+    times = data['hourly']['time']
+    start_index = 0
+    for i, t in enumerate(times):
+        forecast_time = datetime.datetime.strptime(t, "%Y-%m-%dT%H:%M")
+        if forecast_time > now:
+            start_index = i
+            break
+
+    for i in range(start_index, start_index + 5):
         raw_time = data['hourly']['time'][i]
         dt = datetime.datetime.strptime(raw_time, "%Y-%m-%dT%H:%M")
-        time_str = dt.strftime("%-I:%M %p")  # Use %#I for Windows
+        time_str = dt.strftime("%-I:%M %p")  # Use %#I on Windows
         temp_c = data['hourly']['temperature_2m'][i]
         temp = round((temp_c * 9/5) + 32)
         emoji = WEATHER_CODES.get(data['hourly']['weathercode'][i], "❓").split()[0]
         lines.append(f"{time_str} {emoji} {temp}°F")
-    return "\n".join(lines)
+    return "\u2028".join(lines)
 
 def summarize_daily(data):
     lines = ["5-day forecast:"]
@@ -149,7 +160,7 @@ def summarize_daily(data):
         tmax = round((tmax_c * 9/5) + 32)
         emoji = WEATHER_CODES.get(data['daily']['weathercode'][i], "❓").split()[0]
         lines.append(f"{day} {emoji} {tmin}–{tmax}°F")
-    return "\n".join(lines)
+    return "\u2028".join(lines)
 
 def get_weather_alerts(lat, lon):
     url = f"https://api.weather.gov/alerts/active?point={lat},{lon}"
